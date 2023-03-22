@@ -1,0 +1,132 @@
+<html>
+<head>
+<title>DeBruijnAssembler.java</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #000080; font-weight: bold;}
+.s1 { color: #000000;}
+.s2 { color: #808080; font-style: italic;}
+.s3 { color: #0000ff;}
+.s4 { color: #008000; font-weight: bold;}
+</style>
+</head>
+<body bgcolor="#ffffff">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#c0c0c0" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+DeBruijnAssembler.java</font>
+</center></td></tr></table>
+<pre><span class="s0">package </span>com.baidu;
+
+<span class="s0">import </span>javafx.util.Pair;
+
+<span class="s0">import </span>java.util.*;
+
+
+<span class="s0">public class </span>DeBruijnAssembler {
+
+	<span class="s0">public static </span>String assemble(String text, Integer k, <span class="s0">boolean </span>print){
+		<span class="s2">//Modificer</span>
+		String ends = <span class="s0">new </span>String(<span class="s0">new char</span>[k-<span class="s3">2</span>]).replace(<span class="s4">&quot;</span><span class="s0">\0</span><span class="s4">&quot;</span>, <span class="s4">&quot;x&quot;</span>);
+		text = ends + <span class="s4">&quot;X&quot; </span>+ text + <span class="s4">&quot;X&quot; </span>+ ends;
+
+		<span class="s2">// Simuler sekventering</span>
+		ArrayList&lt;String&gt; reads = <span class="s0">new </span>ArrayList&lt;String&gt;(text.length()-k+<span class="s3">1</span>);
+		String readPrint = <span class="s4">&quot;Udvundede k-mere: &quot;</span>;
+		<span class="s0">for </span>(<span class="s0">int </span>i=<span class="s3">0</span>; i&lt; text.length()-k+<span class="s3">2</span>;i++){
+			reads.add(text.substring(i,i+k-<span class="s3">1</span>));
+			readPrint += <span class="s4">&quot;, &quot; </span>+ text.substring(i,i+k-<span class="s3">1</span>);
+		}
+		<span class="s0">if </span>(print == <span class="s0">true</span>) {
+			System.out.println(readPrint + <span class="s4">&quot;</span><span class="s0">\n</span><span class="s4">&quot;</span>);
+		}
+		<span class="s2">//Konstruer de Bruijn graf</span>
+		Set vertices = <span class="s0">new </span>Set();
+		ArrayList&lt;Pair&lt;String, String&gt;&gt; edges = <span class="s0">new </span>ArrayList&lt;&gt;();
+		<span class="s0">for </span>(String read: reads){
+			String v1 = read.substring(<span class="s3">0</span>,k-<span class="s3">2</span>);
+			String v2 = read.substring(<span class="s3">1</span>,k-<span class="s3">1</span>);
+			vertices.add(v1);
+			vertices.add(v2);
+			edges.add(<span class="s0">new </span>Pair(v1,v2));
+		}
+		Collections.shuffle(edges, <span class="s0">new </span>Random());
+		<span class="s2">//Find tilfældige ruter og deres sammenhængspunkter</span>
+		HashMap&lt;ArrayList&lt;Pair&lt;String, String&gt;&gt;,String&gt; routeJoint = <span class="s0">new </span>HashMap&lt;&gt;();
+		Pair&lt;String, Boolean&gt; joint = <span class="s0">new </span>Pair(<span class="s4">&quot;&quot;</span>, <span class="s0">true</span>);
+		Pair&lt;String, String&gt; cur_edge = <span class="s0">new </span>Pair&lt;&gt;(<span class="s4">&quot;&quot;</span>,<span class="s4">&quot;&quot;</span>);
+		<span class="s0">while </span>(!edges.isEmpty()){
+			<span class="s0">if </span>(joint.getValue() == <span class="s0">true</span>){
+				<span class="s2">/*Random rand = new Random(); 
+                cur_edge = edges.get(rand.nextInt(edges.size()));*/</span>
+				cur_edge = findNext(ends, edges);
+			} <span class="s0">else </span>{
+				cur_edge = findNext(joint.getKey(), edges);
+			}
+			String start = cur_edge.getKey();
+			ArrayList&lt;Pair&lt;String, String&gt;&gt; route = <span class="s0">new </span>ArrayList&lt;&gt;();
+			<span class="s2">//Hvis der ikke er flere kanter at følge eller startpunktet er nået, gem gåtur</span>
+			<span class="s0">while </span>(cur_edge.getValue() != start &amp; cur_edge.getKey() != <span class="s4">&quot;None&quot;</span>){
+				route.add(cur_edge);
+				edges.remove(cur_edge); <span class="s2">//CAREFULL</span>
+				cur_edge = findNext(cur_edge.getValue(), edges);
+			}
+			joint = findJoint(route,edges);
+			routeJoint.put(route, joint.getKey());
+		}
+		<span class="s2">//Lav ud og hjemtur</span>
+		<span class="s0">boolean </span>swtich = <span class="s0">false</span>;
+		LinkedList&lt;Pair&lt;String, String&gt;&gt; masterRoute = <span class="s0">new </span>LinkedList&lt;&gt;();
+		Stack&lt;ArrayList&lt;Pair&lt;String, String&gt;&gt;&gt; returnRoutes = <span class="s0">new </span>Stack&lt;&gt;();
+		<span class="s0">for </span>(ArrayList&lt;Pair&lt;String, String&gt;&gt; route: routeJoint.keySet()){
+			ArrayList&lt;Pair&lt;String, String&gt;&gt; returnRoute = <span class="s0">new </span>ArrayList&lt;&gt;();
+			<span class="s0">for </span>(Pair&lt;String, String&gt; edge : route){
+				<span class="s0">if </span>(edge.getKey() == routeJoint.get(route)){
+					swtich = <span class="s0">true</span>;
+				}
+				<span class="s0">if </span>(swtich == <span class="s0">true</span>){
+					returnRoute.add(edge);
+				} <span class="s0">else </span>{
+					masterRoute.add(edge);
+				}
+			}
+			returnRoutes.add(returnRoute);
+		}
+		<span class="s2">//Vend stack om og tilføj til superrouten</span>
+		<span class="s0">for </span>(ArrayList&lt;Pair&lt;String, String&gt;&gt; route : returnRoutes){
+			<span class="s0">for </span>(Pair&lt;String, String&gt; edge : route){
+				masterRoute.add(edge);
+			}
+		}
+		<span class="s2">//Gåtur</span>
+		String modSS = masterRoute.get(<span class="s3">0</span>).getKey();
+		<span class="s0">for </span>(Pair&lt;String, String&gt; edge : masterRoute){
+			modSS += edge.getValue().substring(k-<span class="s3">3</span>, k-<span class="s3">2</span>);
+		}
+		String SS = modSS.substring(k-<span class="s3">1</span>,modSS.length()-(k-<span class="s3">1</span>));
+		<span class="s0">return </span>SS;
+	}
+
+	<span class="s0">private static </span>Pair&lt;String, String&gt; findNext(String vertice, ArrayList&lt;Pair&lt;String, String&gt;&gt; edges){
+		<span class="s0">for </span>(Pair&lt;String, String&gt; edge: edges) {
+				<span class="s0">if </span>(edge.getKey().contentEquals(vertice)) {
+				<span class="s0">return </span>edge;
+			}
+		}
+		<span class="s0">return new </span>Pair&lt;&gt;(<span class="s4">&quot;None&quot;</span>, <span class="s4">&quot;None&quot;</span>);
+	}
+
+	<span class="s0">private static </span>Pair&lt;String, Boolean&gt; findJoint(ArrayList&lt;Pair&lt;String, String&gt;&gt; route, ArrayList&lt;Pair&lt;String, String&gt;&gt; edges){
+		<span class="s0">for </span>(Pair&lt;String, String&gt; edge : route){
+			Pair&lt;String, String&gt; x = findNext(edge.getValue(), edges);
+			<span class="s0">if </span>(x.getKey() != <span class="s4">&quot;None&quot;</span>){
+				<span class="s0">return new </span>Pair(x.getKey(), <span class="s0">false</span>);
+			}
+		}
+		<span class="s0">return new </span>Pair(route.get(route.size()-<span class="s3">1</span>).getValue(),<span class="s0">true</span>);
+	}
+
+}
+</pre>
+</body>
+</html>
