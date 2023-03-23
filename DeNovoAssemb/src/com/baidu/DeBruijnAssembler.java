@@ -6,18 +6,17 @@ import java.util.*;
 
 
 public class DeBruijnAssembler {
-
 	public static String assemble(String text, Integer k, boolean print){
 		//Modificer
-		String ends = new String(new char[k-2]).replace("\0", "x");
+		String ends = new String(new char[k-1]).replace("\0", "x");
 		text = ends + "X" + text + "X" + ends;
 
 		// Simuler sekventering
 		ArrayList<String> reads = new ArrayList<String>(text.length()-k+1);
 		String readPrint = "Udvundede k-mere: ";
-		for (int i=0; i< text.length()-k+2;i++){
-			reads.add(text.substring(i,i+k-1));
-			readPrint += ", " + text.substring(i,i+k-1);
+		for (int i=0; i <= text.length()-k;i++){
+			reads.add(text.substring(i,i+k));
+			readPrint += ", " + text.substring(i,i+k);
 		}
 		if (print == true) {
 			System.out.println(readPrint + "\n");
@@ -26,8 +25,8 @@ public class DeBruijnAssembler {
 		Set vertices = new Set();
 		ArrayList<Pair<String, String>> edges = new ArrayList<>();
 		for (String read: reads){
-			String v1 = read.substring(0,k-2);
-			String v2 = read.substring(1,k-1);
+			String v1 = read.substring(0,k-1);
+			String v2 = read.substring(1,k);
 			vertices.add(v1);
 			vertices.add(v2);
 			edges.add(new Pair(v1,v2));
@@ -85,13 +84,13 @@ public class DeBruijnAssembler {
 		for (Pair<String, String> edge : masterRoute){
 			modSS += edge.getValue().substring(k-3, k-2);
 		}
-		String SS = modSS.substring(k-1,modSS.length()-(k-1));
+		String SS = modSS.substring(k+1,modSS.length()-(k-1));
 		return SS;
 	}
 
 	private static Pair<String, String> findNext(String vertice, ArrayList<Pair<String, String>> edges){
 		for (Pair<String, String> edge: edges) {
-				if (edge.getKey().contentEquals(vertice)) {
+			if (edge.getKey().contentEquals(vertice)) {
 				return edge;
 			}
 		}
